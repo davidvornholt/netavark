@@ -835,11 +835,9 @@ EOF
     # from network podman to isolate3
     expected_rc=1 run_in_container_netns 2 ping -w 1 -c 1 10.89.2.2
 
-    # The last container leaves isolate4, so its rules are removed completely.
+    # The last container leaves isolate4.
     run_netavark --file ${TESTSDIR}/testfiles/isolate4.json teardown $(get_container_netns_path 1)
 
-    # The FORWARD jump into NETAVARK_ISOLATION_1 is shared by all isolated
-    # networks, so it must stay while isolate3 still uses it.
     run_in_host_netns iptables -S FORWARD
     assert "$output" =~ "-A FORWARD -j NETAVARK_ISOLATION_1"
     run_in_host_netns ip6tables -S FORWARD
@@ -848,8 +846,9 @@ EOF
     run_in_host_netns iptables -S NETAVARK_ISOLATION_1
     assert "${lines[1]}" == "-A NETAVARK_ISOLATION_1 -i isolate3 ! -o isolate3 -j NETAVARK_ISOLATION_3"
 
-    # ping our own ip to make sure isolate3 still works
-    run_in_container_netns ping -w 1 -c 1 10.89.2.2
+    # ping the gateways to make sure both networks still work
+    run_in_container_netns ping -w 1 -c 1 10.89.2.1
+    run_in_container_netns 2 ping -w 1 -c 1 10.88.0.1
 
     # from network podman to isolate3, still blocked
     expected_rc=1 run_in_container_netns 2 ping -w 1 -c 1 10.89.2.2
